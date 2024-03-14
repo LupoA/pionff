@@ -1,10 +1,14 @@
 gev_fm_conversion = 5.068
 #   pion [gev]
-mass_pic_GeV = 0.13957039    # https://pdg.lbl.gov/2023/listings/rpp2023-list-pi-plus-minus.pdf
-mass_pi0_GeV = 0.1349768     # https://pdg.lbl.gov/2023/listings/rpp2023-list-pi-zero.pdf
+mass_pic_GeV = (
+    0.13957039  # https://pdg.lbl.gov/2023/listings/rpp2023-list-pi-plus-minus.pdf
+)
+mass_pi0_GeV = 0.1349768  # https://pdg.lbl.gov/2023/listings/rpp2023-list-pi-zero.pdf
 #   rho [gev]
-mass_rho0_GeV = 0.77526      # https://pdg.lbl.gov/2023/listings/rpp2023-list-rho-770.pdf
-width_rho0_neutral = 0.1474    # https://pdg.lbl.gov/2023/listings/rpp2023-list-rho-770.pdf
+mass_rho0_GeV = 0.77526  # https://pdg.lbl.gov/2023/listings/rpp2023-list-rho-770.pdf
+width_rho0_neutral = (
+    0.1474  # https://pdg.lbl.gov/2023/listings/rpp2023-list-rho-770.pdf
+)
 #   muon [gev]
 mass_muon_GeV = 0.1056583755
 #   volumes
