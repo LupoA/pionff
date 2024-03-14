@@ -8,7 +8,7 @@ version = "0.0.1"
 authors = [
   { name="Alessandro Lupo", email="alessandro.lupo@cpt.univ-mrs.fr" },
 ]
-description = "pion_ff"
+description = "pionff"
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [
@@ -24,8 +24,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/LupoA/pion_ff"
-Issues = "https://github.com/LupoA/pion_ff/issues/"
+Homepage = "https://github.com/LupoA/pionff"
+Issues = "https://github.com/LupoA/pionff/issues/"
 
 
 [tool.ruff.lint]
