@@ -3,7 +3,7 @@ from pionff.formfactors.gounaris_sakurai import g_from_gamma, argFpi
 from pionff.mll.fv_energies import get_energies
 
 
-def test():
+def test_energies():
     """
     test against table 1 of
     https://arxiv.org/pdf/1306.2532.pdf
