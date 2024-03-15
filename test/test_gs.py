@@ -4,7 +4,7 @@ from pionff.formfactors.gounaris_sakurai import g_from_gamma, argFpi, mSquare
 from pionff.formfactors.omnes import omnes_function
 
 
-def test_g():
+def test_gs_functions():
     g0 = g_from_gamma(
         m_pi=mass_pi0_GeV, m_rho=mass_rho0_GeV, gamma_rho=width_rho0_neutral
     )
