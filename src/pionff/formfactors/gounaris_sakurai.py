@@ -1,6 +1,8 @@
 #   Gournaris Sakurai parametrisation of the pion FF
 import numpy as np
 from pionff.utils.kinematics import e_to_k_2particles
+from scipy.integrate import quad
+from pionff.utils.amu_kernels import kernelTMR
 
 
 def k_rho_function(m_pi, m_rho):
@@ -123,3 +125,39 @@ def argFpi(e, m_pi, m_rho, g_ppr):  #   aka delta
     elif e > m_rho:
         res += np.pi
     return res
+
+
+def spectral_density(e, m_pi, m_rho, g_ppr):
+    """
+    HVP spectral density (infinite volume); dimensionless
+    """
+    k = e_to_k_2particles(e, m_pi)
+    _res = (k / e) ** 3
+    _res /= 6 * np.pi * np.pi
+    absfp = absFpi(e, m_pi=m_pi, m_rho=m_rho, g_ppr=g_ppr)
+    return _res * absfp * absfp
+
+
+def gs_corr(t, m_pi, m_rho, g_ppr):
+    """
+    \int_0^inf rho(E) E^2 exp(-tE) ::: has dimension [E]^3
+    """
+
+    def gs_corr_integrand(e):
+        """
+        rho(E) E^2 exp(-tE) ::: has dimension [E]^2
+        """
+        return spectral_density(e, m_pi, m_rho, g_ppr) * e * e * np.exp(-t * e)
+
+    ct, _err = quad(lambda x: gs_corr_integrand(x), (2 * m_pi), np.inf)
+    return ct
+
+
+def gs_amu(mass_muon, m_pi, m_rho, g_ppr, x0min=0, x0max=np.inf):
+    def integrand_for_amu(x0, mass_muon, m_pi, m_rho, g_ppr):
+        return gs_corr(x0, m_pi, m_rho, g_ppr) * kernelTMR(x0, mass_muon=mass_muon)
+
+    amu, _err = quad(
+        lambda x: integrand_for_amu(x, mass_muon, m_pi, m_rho, g_ppr), x0min, x0max
+    )
+    return amu

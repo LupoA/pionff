@@ -1,6 +1,12 @@
 import numpy as np
-from pionff.params import mass_pi0_GeV, mass_rho0_GeV, width_rho0_neutral, g_ppr_0
-from pionff.formfactors.gounaris_sakurai import g_from_gamma, argFpi, mSquare
+from pionff.params import (
+    mass_pi0_GeV,
+    mass_rho0_GeV,
+    width_rho0_neutral,
+    g_ppr_0,
+    mass_muon_GeV,
+)
+from pionff.formfactors.gounaris_sakurai import g_from_gamma, argFpi, mSquare, gs_amu
 from pionff.formfactors.omnes import omnes_function
 
 
@@ -28,3 +34,8 @@ def test_gs_functions():
         0, 4 * mass_pi0_GeV**2, argFpi, mass_pi0_GeV, mass_rho0_GeV, g_ppr_0
     )
     assert diff < 1e-8, "Failed testing omnes(s=0)"
+
+    amu_iv = gs_amu(
+        mass_muon_GeV, mass_pi0_GeV, mass_rho0_GeV, g_ppr_0, x0min=0, x0max=np.inf
+    )
+    assert amu_iv - 445.876 < 1e-2
