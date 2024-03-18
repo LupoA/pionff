@@ -12,7 +12,7 @@ def omnes_rep_integrand(sp, s, phaseshift, *args):
     return res
 
 
-def omnes_below_threshold(s, s_th, phaseshift, *args):
+def omnes_below_threshold_scalar(s, s_th, phaseshift, *args):
     """
     args: positional arguments of phaseshift
     s_th = 4 m_pi^2
@@ -22,30 +22,37 @@ def omnes_below_threshold(s, s_th, phaseshift, *args):
     return np.exp(-res)
 
 
-def omnes_above_threshold(s, s_th, phaseshift, *args):
+omnes_below_threshold = np.vectorize(omnes_below_threshold_scalar)
+
+
+def omnes_above_threshold(s, s_th, phaseshift, *args, cut=None):
     """
     args: positional arguments of phaseshift
     s_th = 4 m_pi^2
     Integral formally divergent: point around the singularity is removed
-    within an interval 2e-7
+    within an interval 2e-7 by default
     """
+    cut_off = 1e-07 if cut is None else cut
+
     res_a, _err = quad(
-        omnes_rep_integrand, s_th, s - (1e-7), args=(s, phaseshift, *args)
+        omnes_rep_integrand, s_th, s - cut_off, args=(s, phaseshift, *args)
     )
     res_b, _err = quad(
-        omnes_rep_integrand, s + (1e-7), np.inf, args=(s, phaseshift, *args)
+        omnes_rep_integrand, s + cut_off, np.inf, args=(s, phaseshift, *args)
     )
     res = res_a + res_b
     res *= s / np.pi
     return np.exp(-res)
 
 
-def omnes_function_scalar(s, s_th, phaseshift, *args):
+def omnes_function_scalar(s, s_th, phaseshift, *args, cut=None):
     """
     splitting is needed to avoid passing negative values to np.sqrt
+    Notice: even if this is a function of s, the function phaseshift is written
+    as a function of sqrt(s). Inside 'omnes_rep_integrand' the square root is performed!
     """
     if s > s_th:
-        res = omnes_above_threshold(s, s_th, phaseshift, *args)
+        res = omnes_above_threshold(s, s_th, phaseshift, *args, cut=cut)
     elif s <= s_th:
         res = omnes_below_threshold(s, s_th, phaseshift, *args)
     return res
