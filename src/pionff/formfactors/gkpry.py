@@ -1,4 +1,5 @@
 import numpy as np
+import random
 from pionff.utils.kinematics import e_to_k_2particles
 from scipy.integrate import quad
 from pionff.utils.amu_kernels import kernelTMR
@@ -121,16 +122,74 @@ def phase_shift(e, m_pi, m_rho, par=par_CFD):
             (e <= e_intermediate) & (e >= 2 * m_pi),
             (e > e_intermediate) & (e <= e_asymptotic),
             e > e_asymptotic,
+            e < 2 * m_pi,
         ]
 
         result = np.empty_like(e)
         result[conditions[0]] = _delta_low(e[conditions[0]], m_pi, m_rho, par)
         result[conditions[1]] = _delta_intermediate(e[conditions[1]], m_pi, m_rho, par)
         result[conditions[2]] = _delta_asymptotic(e[conditions[2]], m_pi, m_rho, par)
-
+        result[conditions[3]] = 0
         result[result < 0] += np.pi
 
         return result
+
+
+def phase_shift_errors(e_values, m_pi, m_rho, par, n_copies=100, error="max"):
+    """
+    In order to vary all parameters simulatenously within errors,
+    values are generated according to uniform distributions
+    """
+    results_std = []
+
+    # we allow the function to work on e_values being a float or a np.array
+    # by making it always a np.array
+    if not isinstance(e_values, np.ndarray):
+        e_values = np.array([e_values])
+
+    for e in e_values:
+        results = []
+
+        for _ in range(n_copies):
+            updated_par = par.copy()
+
+            # vary b0
+            b0 = par["b0"]
+            b0_err = par["b0_err"]
+            updated_par["b0"] = random.uniform(b0 - b0_err, b0 + b0_err)
+
+            # vary b1
+            b1 = par["b1"]
+            b1_err = par["b1_err"]
+            updated_par["b1"] = random.uniform(b1 - b1_err, b1 + b1_err)
+
+            # vary lambda_1
+            lambda_1 = par["lambda_1"]
+            lambda_1_err = par["lambda_1_err"]
+            updated_par["lambda_1"] = random.uniform(
+                lambda_1 - lambda_1_err, lambda_1 + lambda_1_err
+            )
+
+            # vary lambda_2
+            lambda_2 = par["lambda_2"]
+            lambda_2_err = par["lambda_2_err"]
+            updated_par["lambda_2"] = random.uniform(
+                lambda_2 - lambda_2_err, lambda_2 + lambda_2_err
+            )
+
+            # run
+            result = phase_shift(e, m_pi, m_rho, updated_par)
+            results.append(result)
+
+        if error == "max":
+            _std = abs(np.amax(results) - np.amin(results))
+            results_std.append(_std)
+        elif error == "std":
+            results_std.append(np.std(results))
+        else:
+            raise ValueError("Allowed error types are 'max' and 'std'.")
+
+    return np.array(results_std)
 
 
 ########################################
