@@ -1,0 +1,184 @@
+import numpy as np
+from pionff.utils.kinematics import e_to_k_2particles
+from scipy.integrate import quad
+from pionff.utils.amu_kernels import kernelTMR
+from pionff.formfactors.omnes import omnes_function
+
+#   Ref: [https://arxiv.org/pdf/1102.2183.pdf]
+
+par_UFD = {
+    "b0": 1.055,
+    "b1": 0.15,
+    "b0_err": 0.011,
+    "b1_err": 0.05,
+    "lambda_1": 1.57,
+    "lambda_1_err": 0.18,
+    "lambda_2": -1.96,
+    "lambda_2_err": 0.49,
+}
+
+par_CFD = {
+    "b0": 1.043,
+    "b1": 0.19,
+    "b0_err": 0.011,
+    "b1_err": 0.05,
+    "lambda_1": 1.39,
+    "lambda_1_err": 0.18,
+    "lambda_2": -1.70,
+    "lambda_2_err": 0.49,
+}
+
+m_kaon = 0.497611  #   GeV
+e_intermediate = 2 * m_kaon  #   GeV
+e_asymptotic = 1.420  #   GeV
+
+
+def _w(e, e0):
+    return (e - np.sqrt((e0 * e0) - (e * e))) / (e + np.sqrt((e0 * e0) - (e * e)))
+
+
+def _cot_delta_low(e, m_pi, m_rho, par):
+    """
+    Inpus must be in GeV
+    """
+    assert np.all(
+        e <= e_intermediate
+    ), "This expression for the phase shift is only valid up to e_intermediate = 2m_kaon"
+    b0 = par["b0"]
+    b1 = par["b1"]
+    e0 = 1.05  #   GeV
+    k = e_to_k_2particles(e, m_pi)
+    res = ((m_rho * m_rho) - (e * e)) * e / (2 * k * k * k)
+    res *= b0 + (_w(e, e0) * b1) + (2 * m_pi * m_pi * m_pi / (m_rho * m_rho * e))
+    return res
+
+
+def _tan_delta_low(e, m_pi, m_rho, par):
+    """
+    Inpus must be in GeV
+    """
+    assert np.all(
+        e <= e_intermediate
+    ), "This expression for the phase shift is only valid up to e_intermediate = 2m_kaon"
+    b0 = par["b0"]
+    b1 = par["b1"]
+    e0 = 1.05  # GeV
+    k = e_to_k_2particles(e, m_pi)
+    res = (2 * k * k * k) / (((m_rho * m_rho) - (e * e)) * e)
+    res /= b0 + (_w(e, e0) * b1) + (2 * m_pi * m_pi * m_pi / (m_rho * m_rho * e))
+    return res
+    # assert np.all(e <= e_intermediate), "This expression for the phase shift is only valid up to e_intermediate = 2m_kaon"
+    # res = 1 / _cot_delta_low(e, m_pi, m_rho, par)
+    # return res
+
+
+def _delta_low(e, m_pi, m_rho, par):
+    return np.arctan(_tan_delta_low(e, m_pi, m_rho, par))
+
+
+def _delta_intermediate(e, m_pi, m_rho, par):
+    assert np.all(
+        (e > e_intermediate) & (e <= e_asymptotic)
+    ), "Expression valid between e_intermediate = 2m_kaon and 1420 MeV"
+    lambda_1 = par["lambda_1"]
+    lambda_2 = par["lambda_2"]
+    lambda_0 = _delta_low(e_intermediate, m_pi, m_rho, par)
+    _term = (e / (2 * m_kaon)) - 1
+    return lambda_0 + (lambda_1 * _term) + lambda_2 * (_term**2)
+
+
+def _delta_asymptotic(e, m_pi, m_rho, par):
+    """
+    not part of the reference, continuously extends the phase shift up to 180 degrees
+    """
+    assert np.all(e > e_asymptotic), "Expression valid above 1.420 GeV"
+    d_sa = _delta_intermediate(e_asymptotic, m_pi, m_rho, par)
+    if d_sa < 0:
+        d_sa += np.pi
+    return np.pi + (
+        (d_sa - np.pi) * 2 / (1 + ((e * e) / (e_asymptotic * e_asymptotic)) ** (3 / 4))
+    )
+
+
+def phase_shift(e, m_pi, m_rho, par=par_CFD):
+    if isinstance(e, (float, int)):
+        if e <= e_intermediate and e >= 2 * m_pi:
+            result = _delta_low(e, m_pi, m_rho, par)
+        elif e > e_intermediate and e <= e_asymptotic:
+            result = _delta_intermediate(e, m_pi, m_rho, par)
+        elif e > e_asymptotic:
+            result = _delta_asymptotic(e, m_pi, m_rho, par)
+        elif e < 2 * m_pi:
+            result = 0
+        else:
+            raise ValueError("Phase shift is not defined at energy = ", e)
+
+        if result < 0:
+            result += np.pi
+        return result
+    else:
+        conditions = [
+            (e <= e_intermediate) & (e >= 2 * m_pi),
+            (e > e_intermediate) & (e <= e_asymptotic),
+            e > e_asymptotic,
+        ]
+
+        result = np.empty_like(e)
+        result[conditions[0]] = _delta_low(e[conditions[0]], m_pi, m_rho, par)
+        result[conditions[1]] = _delta_intermediate(e[conditions[1]], m_pi, m_rho, par)
+        result[conditions[2]] = _delta_asymptotic(e[conditions[2]], m_pi, m_rho, par)
+
+        result[result < 0] += np.pi
+
+        return result
+
+
+########################################
+
+
+def argFpi(e, m_pi, m_rho):
+    return phase_shift(e, m_pi, m_rho)
+
+
+def absFpi_of_s(s, m_pi, m_rho):
+    return omnes_function(s, 4 * m_pi * m_pi, phase_shift, m_pi, m_rho, cut=1e-4)
+
+
+def absFpi(e, m_pi, m_rho):
+    return absFpi_of_s(e * e, m_pi, m_rho)
+
+
+def py_spectral_density(e, m_pi, m_rho):
+    """
+    HVP spectral density (infinite volume); dimensionless
+    """
+    k = e_to_k_2particles(e, m_pi)
+    _res = (k / e) ** 3
+    _res /= 6 * np.pi * np.pi
+    absfp = absFpi(e, m_pi=m_pi, m_rho=m_rho)
+    return _res * absfp * absfp
+
+
+def py_corr(t, m_pi, m_rho):
+    """
+    \int_0^inf rho(E) E^2 exp(-tE) ::: has dimension [E]^3
+    """
+
+    def _corr_integrand(e):
+        """
+        rho(E) E^2 exp(-tE) ::: has dimension [E]^2
+        """
+        return py_spectral_density(e, m_pi, m_rho) * e * e * np.exp(-t * e)
+
+    ct, _err = quad(lambda x: _corr_integrand(x), (2 * m_pi), np.inf)
+    return ct
+
+
+def py_amu(mass_muon, m_pi, m_rho, x0min=0, x0max=np.inf):
+    def _integrand_for_amu(x0, mass_muon, m_pi, m_rho):
+        return py_corr(x0, m_pi, m_rho) * kernelTMR(x0, mass_muon=mass_muon)
+
+    amu, _err = quad(
+        lambda x: _integrand_for_amu(x, mass_muon, m_pi, m_rho), x0min, x0max
+    )
+    return amu
