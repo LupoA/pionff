@@ -2,14 +2,38 @@ import numpy as np
 from scipy.integrate import quad
 
 
-def omnes_rep_integrand(sp, s, phaseshift, *args):
+def _omnes_rep_integrand(sp, s, phaseshift, *args):
     """
-    returns delta(s') / s' (s-s') to be integrated in s'
+    returns delta(s') / s' (s'-s) to be integrated in s'
     args: positional arguments of phaseshift
     """
     res = phaseshift(np.sqrt(sp), *args)
-    res /= sp * (s - sp)
+    res /= sp * (sp - s)
     return res
+
+
+def _phase_shift_reduced_support(t, s_th, phaseshift, *args):
+    """
+    Phaseshift, after change of variable:
+    s = s_th (1+t)/(1-t)
+    """
+    _s = s_th * (1 + t) / (1 - t)
+    return phaseshift(np.sqrt(_s), *args)
+
+
+def _omnes_rep_integrand_reduced_support(t, s, s_th, phaseshift, *args):
+    """
+    Integrand for Omnes, after change of variable:
+    s = s_th (1+t)/(1-t)
+    to be integrated in [0,1] with a pole in t_pole
+    """
+    _prefactor = 2 / (s + s_th)
+    res = _phase_shift_reduced_support(t, s_th, phaseshift, *args) / (1 + t)
+    return res * _prefactor
+
+
+def _t_pole(s, s_th):
+    return (s - s_th) / (s + s_th)
 
 
 def omnes_below_threshold_scalar(s, s_th, phaseshift, *args):
@@ -17,9 +41,9 @@ def omnes_below_threshold_scalar(s, s_th, phaseshift, *args):
     args: positional arguments of phaseshift
     s_th = 4 m_pi^2
     """
-    res, _err = quad(omnes_rep_integrand, s_th, np.inf, args=(s, phaseshift, *args))
+    res, _err = quad(_omnes_rep_integrand, s_th, np.inf, args=(s, phaseshift, *args))
     res *= s / np.pi
-    return np.exp(-res)
+    return np.exp(res)
 
 
 omnes_below_threshold = np.vectorize(omnes_below_threshold_scalar)
@@ -29,20 +53,19 @@ def omnes_above_threshold(s, s_th, phaseshift, *args, cut=None):
     """
     args: positional arguments of phaseshift
     s_th = 4 m_pi^2
-    Integral formally divergent: point around the singularity is removed
-    within an interval 2e-7 by default
+    principal value
     """
-    cut_off = 1e-07 if cut is None else cut
+    t_pole = _t_pole(s, s_th)
+    res, _err = quad(
+        lambda x: _omnes_rep_integrand_reduced_support(x, s, s_th, phaseshift, *args),
+        weight="cauchy",
+        wvar=t_pole,
+        a=0,
+        b=1 - 1e-6,
+    )
 
-    res_a, _err = quad(
-        omnes_rep_integrand, s_th, s - cut_off, args=(s, phaseshift, *args)
-    )
-    res_b, _err = quad(
-        omnes_rep_integrand, s + cut_off, np.inf, args=(s, phaseshift, *args)
-    )
-    res = res_a + res_b
     res *= s / np.pi
-    return np.exp(-res)
+    return np.exp(res)
 
 
 def omnes_function_scalar(s, s_th, phaseshift, *args, cut=None):
@@ -59,43 +82,3 @@ def omnes_function_scalar(s, s_th, phaseshift, *args, cut=None):
 
 
 omnes_function = np.vectorize(omnes_function_scalar)
-
-#   #   #   #   specialised functions for gounaris sakurai
-
-
-def omega_GS_below_threshold(s, m_pi, m_rho, g_ppr):
-    from pionff.formfactors.gounaris_sakurai import argFpi as deltaGS
-
-    res, _err = quad(
-        omnes_rep_integrand,
-        (2 * m_pi) ** 2,
-        np.inf,
-        args=(s, deltaGS, m_pi, m_rho, g_ppr),
-    )
-    res *= s / np.pi
-    return np.exp(-res)
-
-
-def omega_GS_above_threshold(s, m_pi, m_rho, g_ppr, cut=1e-8):
-    from pionff.formfactors.gounaris_sakurai import argFpi as deltaGS
-
-    res_a, _err = quad(
-        omnes_rep_integrand,
-        a=(2 * m_pi) ** 2,
-        b=s - cut,
-        args=(s, deltaGS, m_pi, m_rho, g_ppr),
-    )
-    res_b, _err = quad(
-        omnes_rep_integrand, a=s + cut, b=np.inf, args=(s, deltaGS, m_pi, m_rho, g_ppr)
-    )
-    res = res_a + res_b
-    res *= s / np.pi
-    return np.exp(-res)
-
-
-def omega_GS(s, m_pi, m_rho, g_ppr):
-    if s > (4 * m_pi * m_pi):
-        res = omega_GS_above_threshold(s, m_pi, m_rho, g_ppr, cut=1e-6)
-    elif s <= (4 * m_pi * m_pi):
-        res = omega_GS_below_threshold(s, m_pi, m_rho, g_ppr)
-    return res

@@ -91,8 +91,9 @@ def plot_phase_shift_errors():
 
     plt.xlabel("E [GeV]")
     plt.ylabel(r"$\delta_1^1(E)$")
-
-    plt.legend()
+    plt.xticks(fontsize="large")
+    plt.yticks(fontsize="large")
+    plt.legend(fontsize="large")
     plt.grid(True)
     plt.show()
 
