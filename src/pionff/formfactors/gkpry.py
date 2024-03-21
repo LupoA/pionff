@@ -74,9 +74,6 @@ def _tan_delta_low(e, m_pi, m_rho, par):
     res = (2 * k * k * k) / (((m_rho * m_rho) - (e * e)) * e)
     res /= b0 + (_w(e, e0) * b1) + (2 * m_pi * m_pi * m_pi / (m_rho * m_rho * e))
     return res
-    # assert np.all(e <= e_intermediate), "This expression for the phase shift is only valid up to e_intermediate = 2m_kaon"
-    # res = 1 / _cot_delta_low(e, m_pi, m_rho, par)
-    # return res
 
 
 def _delta_low(e, m_pi, m_rho, par):
@@ -131,7 +128,7 @@ def phase_shift(e, m_pi, m_rho, par=par_CFD):
             e < 2 * m_pi,
         ]
 
-        result = np.empty_like(e)
+        result = np.zeros_like(e, dtype=float)
         result[conditions[0]] = _delta_low(e[conditions[0]], m_pi, m_rho, par)
         result[conditions[1]] = _delta_intermediate(e[conditions[1]], m_pi, m_rho, par)
         result[conditions[2]] = _delta_asymptotic(e[conditions[2]], m_pi, m_rho, par)
@@ -141,11 +138,65 @@ def phase_shift(e, m_pi, m_rho, par=par_CFD):
         return result
 
 
-@timeit(DEBUG_MODE)
-def phase_shift_errors(e_values, m_pi, m_rho, par, n_copies=100, error="max"):
+def create_phase_instance(e_values, m_pi, m_rho, par, distrib="uniform", seed=None):
     """
     In order to vary all parameters simulatenously within errors,
     values are generated according to uniform distributions
+    returns n_copies of phaseshift(e)
+
+    distrib: 'uniform' or 'normal'
+    """
+    phase_instances = []
+
+    if seed is not None:
+        np.random.seed(seed)  # Set seed for reproducibility
+        random.seed(seed)
+
+    if not isinstance(e_values, np.ndarray):
+        e_values = np.array([e_values])
+
+    for e in e_values:
+        updated_par = par.copy()
+
+        # vary b0
+        b0 = par["b0"]
+        b0_err = par["b0_err"]
+        # vary b1
+        b1 = par["b1"]
+        b1_err = par["b1_err"]
+        # vary lambda_1
+        lambda_1 = par["lambda_1"]
+        lambda_1_err = par["lambda_1_err"]
+        # vary lambda_2
+        lambda_2 = par["lambda_2"]
+        lambda_2_err = par["lambda_2_err"]
+
+        if distrib == "uniform":
+            updated_par["b0"] = random.uniform(b0 - b0_err, b0 + b0_err)
+            updated_par["b1"] = random.uniform(b1 - b1_err, b1 + b1_err)
+            updated_par["lambda_1"] = random.uniform(
+                lambda_1 - lambda_1_err, lambda_1 + lambda_1_err
+            )
+            updated_par["lambda_2"] = random.uniform(
+                lambda_2 - lambda_2_err, lambda_2 + lambda_2_err
+            )
+        if distrib == "normal":
+            updated_par["b0"] = np.random.normal(b0, b0_err)
+            updated_par["b1"] = np.random.normal(b1, b1_err)
+            updated_par["lambda_1"] = np.random.normal(lambda_1, lambda_1_err)
+            updated_par["lambda_2"] = np.random.normal(lambda_2, lambda_2_err)
+
+        # create instance
+        phase_instance = phase_shift(e, m_pi, m_rho, updated_par)
+        phase_instances.append(phase_instance)
+
+    return np.array(phase_instances)
+
+
+@timeit(DEBUG_MODE)
+def phase_shift_errors(e_values, m_pi, m_rho, par, n_copies=100, error="max"):
+    """
+    Returns the error on the phase shift. TODO: remove code repetition with create_phase_instance.
     """
     results_std = []
 
@@ -202,16 +253,22 @@ def phase_shift_errors(e_values, m_pi, m_rho, par, n_copies=100, error="max"):
 ########################################
 
 
-def argFpi(e, m_pi, m_rho):
-    return phase_shift(e, m_pi, m_rho)
+def argFpi(e, m_pi, m_rho, par):
+    return phase_shift(e, m_pi, m_rho, par)
 
 
-def absFpi_of_s(s, m_pi, m_rho):
-    return omnes_function(s, 4 * m_pi * m_pi, phase_shift, m_pi, m_rho)
+def absFpi_of_s(s, m_pi, m_rho, par):
+    return omnes_function(s, 4 * m_pi * m_pi, phase_shift, m_pi, m_rho, par)
 
 
-def absFpi(e, m_pi, m_rho):
-    return absFpi_of_s(e * e, m_pi, m_rho)
+def absFpi(e, m_pi, m_rho, par=par_CFD):
+    return absFpi_of_s(e * e, m_pi, m_rho, par)
+
+
+def create_absFpi_instance(e, m_pi, m_rho, par=par_CFD, distrib="uniform", seed=None):
+    return omnes_function(
+        e * e, 4 * m_pi * m_pi, create_phase_instance, m_pi, m_rho, par, distrib, seed
+    )
 
 
 def py_spectral_density(e, m_pi, m_rho):
@@ -228,8 +285,8 @@ def py_corr(t, m_pi, m_rho):
     return corr_iv(t, m_pi, absFpi, m_pi, m_rho)
 
 
-def py_amu(mass_muon, m_pi, m_rho, x0min=0, x0max=np.inf):
+def py_amu(mass_muon, m_pi, m_rho, par=par_CFD, x0min=0, x0max=np.inf):
     result = a_mu_from_rho_iv(
-        mass_muon, m_pi, absFpi, m_pi, m_rho, x0min=x0min, x0max=x0max
+        mass_muon, m_pi, absFpi, m_pi, m_rho, par, x0min=x0min, x0max=x0max
     )
     return result
