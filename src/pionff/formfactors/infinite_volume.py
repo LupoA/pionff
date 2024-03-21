@@ -3,6 +3,8 @@ from pionff.utils.kinematics import e_to_k_2particles
 from scipy.integrate import quad
 from pionff.utils.amu_kernels import kernelTMR, kernelEQ
 from pionff.utils.amu_kernels import _omega_2002_12347 as omega
+from pionff.utils.debug_opt import timeit
+from pionff.params import DEBUG_MODE
 
 
 def spectral_density_iv(e, m_pi, absfpi, *absfpi_args):
@@ -38,6 +40,7 @@ def corr_iv(t, m_pi, absfpi, *absfpi_args):
     return result
 
 
+@timeit(DEBUG_MODE)
 def a_mu_iv(mass_muon, m_pi, absfpi, *absfpi_args, x0min=0, x0max=np.inf):
     """
     a_mu = \int_min^max dx0 C(x0) K(x0)
@@ -58,6 +61,7 @@ def a_mu_iv(mass_muon, m_pi, absfpi, *absfpi_args, x0min=0, x0max=np.inf):
     return amu
 
 
+@timeit(DEBUG_MODE)
 def a_mu_from_rho_iv(mass_muon, m_pi, absfpi, *absfpi_args, x0min=0, x0max=np.inf):
     """
     a_mu = \int dE E^2 rho(E) \int dQ^2/m^2 omega(Q^2/m^2) kernelEQ(E,Q^2)

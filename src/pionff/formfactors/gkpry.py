@@ -7,6 +7,9 @@ from pionff.formfactors.infinite_volume import (
     corr_iv,
     spectral_density_iv,
 )
+from pionff.utils.debug_opt import timeit
+from pionff.params import DEBUG_MODE
+
 
 #   Ref: [https://arxiv.org/pdf/1102.2183.pdf]
 
@@ -138,6 +141,7 @@ def phase_shift(e, m_pi, m_rho, par=par_CFD):
         return result
 
 
+@timeit(DEBUG_MODE)
 def phase_shift_errors(e_values, m_pi, m_rho, par, n_copies=100, error="max"):
     """
     In order to vary all parameters simulatenously within errors,

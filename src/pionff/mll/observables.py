@@ -4,8 +4,11 @@ from pionff.utils.amu_kernels import kernelTMR
 from scipy.integrate import quad
 import logging
 import numpy as np
+from pionff.utils.debug_opt import timeit
+from pionff.params import DEBUG_MODE
 
 
+@timeit(DEBUG_MODE)
 def solve_ll(n_states, L, m_pi, phase_shift, absfpi, phase_args=(), absfpi_args=()):
     """
     Get finite volume energies and matrix elements
@@ -57,6 +60,7 @@ def mll_ssd(e, sigma, e_n, a_n):
     return srho / 3
 
 
+@timeit(DEBUG_MODE)
 def mll_amu(mass_muon, e_n, asq_n, x0min=0, x0max=np.inf):
     """
     return a_mu = int_{x0 min}^{x0 max} K(x0) C(x0)

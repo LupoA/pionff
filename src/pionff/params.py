@@ -20,3 +20,5 @@ gamma_eul_masc = 0.5772156649015
 #
 g_ppr_0 = 5.899618333471944
 g_ppr_c = 5.95567076390411
+
+DEBUG_MODE = True
