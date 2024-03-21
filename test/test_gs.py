@@ -13,7 +13,7 @@ from pionff.formfactors.gounaris_sakurai import (
     gs_amu,
     absFpi,
 )
-from pionff.formfactors.infinite_volume import a_mu_iv
+from pionff.formfactors.infinite_volume import a_mu_iv, a_mu_from_rho_iv
 from pionff.formfactors.omnes import omnes_function
 
 
@@ -63,3 +63,20 @@ def test_gs_functions():
     assert (
         a_mu_from_generic_function - amu_iv < 1e-8
     ), "Failed comparing a_mu in infinite volume from a generic function specialised in GS and a GS-hardcoded function."
+
+    a_mu_from_rho = a_mu_from_rho_iv(
+        mass_muon_GeV,
+        mass_pi0_GeV,
+        absFpi,
+        mass_pi0_GeV,
+        mass_rho0_GeV,
+        g_ppr_0,
+        x0min=0,
+        x0max=np.inf,
+    )
+    print("diff", abs(a_mu_from_rho - amu_iv) * 1e10)
+    assert abs(a_mu_from_rho - amu_iv) * 1e10 < 1e-2
+
+
+if __name__ == "__main__":
+    test_gs_functions()

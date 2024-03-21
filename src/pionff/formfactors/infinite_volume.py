@@ -1,7 +1,8 @@
 import numpy as np
 from pionff.utils.kinematics import e_to_k_2particles
 from scipy.integrate import quad
-from pionff.utils.amu_kernels import kernelTMR
+from pionff.utils.amu_kernels import kernelTMR, kernelEQ
+from pionff.utils.amu_kernels import _omega_2002_12347 as omega
 
 
 def spectral_density_iv(e, m_pi, absfpi, *absfpi_args):
@@ -31,12 +32,10 @@ def corr_iv(t, m_pi, absfpi, *absfpi_args):
             * np.exp(-t_val * e)
         )
 
-    def _integrate(t_val):
-        return quad(lambda x: corr_integrand(x, t_val), (2 * m_pi), np.inf)[0]
-
-    ct = np.vectorize(_integrate)(t)
-
-    return ct
+    result, _ = quad(
+        corr_integrand, 2 * m_pi, np.inf, args=(t,), epsabs=1e-12, epsrel=1e-12
+    )
+    return result
 
 
 def a_mu_iv(mass_muon, m_pi, absfpi, *absfpi_args, x0min=0, x0max=np.inf):
@@ -53,5 +52,33 @@ def a_mu_iv(mass_muon, m_pi, absfpi, *absfpi_args, x0min=0, x0max=np.inf):
         lambda x: integrand_for_amu(x, mass_muon, m_pi, absfpi, *absfpi_args),
         x0min,
         x0max,
+        epsabs=1e-12,
+        epsrel=1e-12,
     )
     return amu
+
+
+def a_mu_from_rho_iv(mass_muon, m_pi, absfpi, *absfpi_args, x0min=0, x0max=np.inf):
+    """
+    a_mu = \int dE E^2 rho(E) \int dQ^2/m^2 omega(Q^2/m^2) kernelEQ(E,Q^2)
+    """
+
+    def _integrate_qsq(e):
+        def _integrand_qsq(qsq, e):
+            return omega(qsq / mass_muon**2) * kernelEQ(e, qsq, mass_muon, x0min, x0max)
+
+        return quad(
+            lambda x: _integrand_qsq(x, e), 0, np.inf, epsabs=1e-12, epsrel=1e-12
+        )[0]
+
+    def _integrand(e):
+        return (
+            spectral_density_iv(e, m_pi, absfpi, *absfpi_args)
+            * e
+            * e
+            * _integrate_qsq(e)
+        )
+
+    return quad(lambda x: _integrand(x), 2 * m_pi, np.inf, epsabs=1e-12, epsrel=1e-12)[
+        0
+    ]

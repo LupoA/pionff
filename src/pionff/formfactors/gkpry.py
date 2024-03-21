@@ -1,9 +1,12 @@
 import numpy as np
 import random
 from pionff.utils.kinematics import e_to_k_2particles
-from scipy.integrate import quad
-from pionff.utils.amu_kernels import kernelTMR
 from pionff.formfactors.omnes import omnes_function
+from pionff.formfactors.infinite_volume import (
+    a_mu_from_rho_iv,
+    corr_iv,
+    spectral_density_iv,
+)
 
 #   Ref: [https://arxiv.org/pdf/1102.2183.pdf]
 
@@ -200,7 +203,7 @@ def argFpi(e, m_pi, m_rho):
 
 
 def absFpi_of_s(s, m_pi, m_rho):
-    return omnes_function(s, 4 * m_pi * m_pi, phase_shift, m_pi, m_rho, cut=1e-4)
+    return omnes_function(s, 4 * m_pi * m_pi, phase_shift, m_pi, m_rho)
 
 
 def absFpi(e, m_pi, m_rho):
@@ -211,33 +214,18 @@ def py_spectral_density(e, m_pi, m_rho):
     """
     HVP spectral density (infinite volume); dimensionless
     """
-    k = e_to_k_2particles(e, m_pi)
-    _res = (k / e) ** 3
-    _res /= 6 * np.pi * np.pi
-    absfp = absFpi(e, m_pi=m_pi, m_rho=m_rho)
-    return _res * absfp * absfp
+    return spectral_density_iv(e, m_pi, absFpi, m_pi, m_rho)
 
 
 def py_corr(t, m_pi, m_rho):
     """
     \int_0^inf rho(E) E^2 exp(-tE) ::: has dimension [E]^3
     """
-
-    def _corr_integrand(e):
-        """
-        rho(E) E^2 exp(-tE) ::: has dimension [E]^2
-        """
-        return py_spectral_density(e, m_pi, m_rho) * e * e * np.exp(-t * e)
-
-    ct, _err = quad(lambda x: _corr_integrand(x), (2 * m_pi), np.inf)
-    return ct
+    return corr_iv(t, m_pi, absFpi, m_pi, m_rho)
 
 
 def py_amu(mass_muon, m_pi, m_rho, x0min=0, x0max=np.inf):
-    def _integrand_for_amu(x0, mass_muon, m_pi, m_rho):
-        return py_corr(x0, m_pi, m_rho) * kernelTMR(x0, mass_muon=mass_muon)
-
-    amu, _err = quad(
-        lambda x: _integrand_for_amu(x, mass_muon, m_pi, m_rho), x0min, x0max
+    result = a_mu_from_rho_iv(
+        mass_muon, m_pi, absFpi, m_pi, m_rho, x0min=x0min, x0max=x0max
     )
-    return amu
+    return result
