@@ -49,7 +49,7 @@ def omnes_below_threshold_scalar(s, s_th, phaseshift, *args):
 omnes_below_threshold = np.vectorize(omnes_below_threshold_scalar)
 
 
-def omnes_above_threshold(s, s_th, phaseshift, *args, cut=None):
+def omnes_above_threshold(s, s_th, phaseshift, *args):
     """
     args: positional arguments of phaseshift
     s_th = 4 m_pi^2
@@ -68,14 +68,14 @@ def omnes_above_threshold(s, s_th, phaseshift, *args, cut=None):
     return np.exp(res)
 
 
-def omnes_function_scalar(s, s_th, phaseshift, *args, cut=None):
+def omnes_function_scalar(s, s_th, phaseshift, *args):
     """
     splitting is needed to avoid passing negative values to np.sqrt
     Notice: even if this is a function of s, the function phaseshift is written
     as a function of sqrt(s). Inside 'omnes_rep_integrand' the square root is performed!
     """
     if s > s_th:
-        res = omnes_above_threshold(s, s_th, phaseshift, *args, cut=cut)
+        res = omnes_above_threshold(s, s_th, phaseshift, *args)
     elif s <= s_th:
         res = omnes_below_threshold(s, s_th, phaseshift, *args)
     return res

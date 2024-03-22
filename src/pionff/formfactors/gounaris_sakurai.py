@@ -127,6 +127,10 @@ def argFpi(e, m_pi, m_rho, g_ppr):  #   aka delta
     return res
 
 
+def phase_shift(e, m_pi, m_rho, g_ppr):
+    return argFpi(e, m_pi, m_rho, g_ppr)
+
+
 def spectral_density(e, m_pi, m_rho, g_ppr):
     """
     HVP spectral density (infinite volume); dimensionless
