@@ -35,6 +35,28 @@ par_CFD = {
     "lambda_2_err": 0.49,
 }
 
+par_UFD_2sigma = {
+    "b0": 1.055,
+    "b1": 0.15,
+    "b0_err": 0.011 * 7,
+    "b1_err": 0.05 * 7,
+    "lambda_1": 1.57,
+    "lambda_1_err": 0.18,
+    "lambda_2": -1.96,
+    "lambda_2_err": 0.49,
+}
+
+par_CFD_2sigma = {
+    "b0": 1.043,
+    "b1": 0.19,
+    "b0_err": 0.011 * 7,
+    "b1_err": 0.05 * 7,
+    "lambda_1": 1.39,
+    "lambda_1_err": 0.18,
+    "lambda_2": -1.70,
+    "lambda_2_err": 0.49,
+}
+
 m_kaon = 0.497611  #   GeV
 e_intermediate = 2 * m_kaon  #   GeV
 e_asymptotic = 1.420  #   GeV
@@ -261,11 +283,11 @@ def absFpi_of_s(s, m_pi, m_rho, par):
     return omnes_function(s, 4 * m_pi * m_pi, phase_shift, m_pi, m_rho, par)
 
 
-def absFpi(e, m_pi, m_rho, par=par_CFD):
+def absFpi(e, m_pi, m_rho, par):
     return absFpi_of_s(e * e, m_pi, m_rho, par)
 
 
-def create_absFpi_instance(e, m_pi, m_rho, par=par_CFD, distrib="uniform", seed=None):
+def create_absFpi_instance(e, m_pi, m_rho, par, distrib="uniform", seed=None):
     return omnes_function(
         e * e, 4 * m_pi * m_pi, create_phase_instance, m_pi, m_rho, par, distrib, seed
     )
@@ -285,7 +307,7 @@ def py_corr(t, m_pi, m_rho):
     return corr_iv(t, m_pi, absFpi, m_pi, m_rho)
 
 
-def py_amu(mass_muon, m_pi, m_rho, par=par_CFD, x0min=0, x0max=np.inf):
+def py_amu(mass_muon, m_pi, m_rho, par, x0min=0, x0max=np.inf):
     result = a_mu_from_rho_iv(
         mass_muon, m_pi, absFpi, m_pi, m_rho, par, x0min=x0min, x0max=x0max
     )

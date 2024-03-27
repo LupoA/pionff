@@ -7,13 +7,13 @@ from pionff.params import (
     mass_muon_GeV,
 )
 from pionff.mll.observables import solve_ll, mll_amu
-from pionff.formfactors.gkpry import absFpi, argFpi, py_amu
+from pionff.formfactors.gkpry import absFpi, argFpi, py_amu, par_CFD
 
 
 def mll_py(L, m_muon, m_pi, m_rho, x0min, x0max=np.inf):
     print("GKPRY\n")
 
-    amu_iv = py_amu(m_muon, m_pi, m_rho, x0min=x0min, x0max=x0max)
+    amu_iv = py_amu(m_muon, m_pi, m_rho, par_CFD, x0min=x0min, x0max=x0max)
 
     print("Infinite L = ", amu_iv * 1e10)
 
@@ -23,8 +23,8 @@ def mll_py(L, m_muon, m_pi, m_rho, x0min, x0max=np.inf):
         m_pi,
         phase_shift=argFpi,
         absfpi=absFpi,
-        phase_args=(m_pi, m_rho),
-        absfpi_args=(m_pi, m_rho),
+        phase_args=(m_pi, m_rho, par_CFD),
+        absfpi_args=(m_pi, m_rho, par_CFD),
     )
 
     print("E_n =", e_n)
@@ -52,7 +52,7 @@ def mll_py(L, m_muon, m_pi, m_rho, x0min, x0max=np.inf):
 
 
 if __name__ == "__main__":
-    x0_min = 0  # 1.628 * gev_fm_conversion
+    x0_min = 1.682 * gev_fm_conversion
 
     yp = mll_py(
         Lref_fm * gev_fm_conversion,
