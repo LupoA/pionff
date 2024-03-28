@@ -126,7 +126,7 @@ def _delta_asymptotic(e, m_pi, m_rho, par):
     )
 
 
-def phase_shift(e, m_pi, m_rho, par=par_CFD):
+def phase_shift(e, m_pi, m_rho, par):
     if isinstance(e, (float, int)):
         if e <= e_intermediate and e >= 2 * m_pi:
             result = _delta_low(e, m_pi, m_rho, par)
