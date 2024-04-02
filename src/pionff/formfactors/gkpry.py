@@ -293,18 +293,18 @@ def create_absFpi_instance(e, m_pi, m_rho, par, distrib="uniform", seed=None):
     )
 
 
-def py_spectral_density(e, m_pi, m_rho):
+def py_spectral_density(e, m_pi, m_rho, par):
     """
     HVP spectral density (infinite volume); dimensionless
     """
-    return spectral_density_iv(e, m_pi, absFpi, m_pi, m_rho)
+    return spectral_density_iv(e, m_pi, absFpi, m_pi, m_rho, par)
 
 
-def py_corr(t, m_pi, m_rho):
+def py_corr(t, m_pi, m_rho, par):
     """
     \int_0^inf rho(E) E^2 exp(-tE) ::: has dimension [E]^3
     """
-    return corr_iv(t, m_pi, absFpi, m_pi, m_rho)
+    return corr_iv(t, m_pi, absFpi, m_pi, m_rho, par)
 
 
 def py_amu(mass_muon, m_pi, m_rho, par, x0min=0, x0max=np.inf):
@@ -312,3 +312,59 @@ def py_amu(mass_muon, m_pi, m_rho, par, x0min=0, x0max=np.inf):
         mass_muon, m_pi, absFpi, m_pi, m_rho, par, x0min=x0min, x0max=x0max
     )
     return result
+
+
+def spectral_density_errors(e_values, m_pi, m_rho, par, n_copies=100, error="max"):
+    """
+    Returns the error on the spectral density.
+    """
+    results_std = []
+
+    # we allow the function to work on e_values being a float or a np.array
+    # by making it always a np.array
+    if not isinstance(e_values, np.ndarray):
+        e_values = np.array([e_values])
+
+    for e in e_values:
+        results = []
+
+        for _ in range(n_copies):
+            updated_par = par.copy()
+
+            # vary b0
+            b0 = par["b0"]
+            b0_err = par["b0_err"]
+            updated_par["b0"] = random.uniform(b0 - b0_err, b0 + b0_err)
+
+            # vary b1
+            b1 = par["b1"]
+            b1_err = par["b1_err"]
+            updated_par["b1"] = random.uniform(b1 - b1_err, b1 + b1_err)
+
+            # vary lambda_1
+            lambda_1 = par["lambda_1"]
+            lambda_1_err = par["lambda_1_err"]
+            updated_par["lambda_1"] = random.uniform(
+                lambda_1 - lambda_1_err, lambda_1 + lambda_1_err
+            )
+
+            # vary lambda_2
+            lambda_2 = par["lambda_2"]
+            lambda_2_err = par["lambda_2_err"]
+            updated_par["lambda_2"] = random.uniform(
+                lambda_2 - lambda_2_err, lambda_2 + lambda_2_err
+            )
+
+            # run
+            result = py_spectral_density(e, m_pi, m_rho, updated_par)
+            results.append(result)
+
+        if error == "max":
+            _std = abs(np.amax(results) - np.amin(results))
+            results_std.append(_std)
+        elif error == "std":
+            results_std.append(np.std(results))
+        else:
+            raise ValueError("Allowed error types are 'max' and 'std'.")
+
+    return np.array(results_std)
