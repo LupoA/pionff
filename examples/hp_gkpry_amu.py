@@ -102,7 +102,7 @@ def gkpry_errors(file_path, L, m_muon, m_pi, m_rho, par, n_copies, x0min, x0max)
 
 if __name__ == "__main__":
     x0_min = 0 * gev_fm_conversion
-    x0_max = (1.682 + 0.5) * gev_fm_conversion
+    x0_max = (1.682) * gev_fm_conversion
     L = Lref_fm * gev_fm_conversion
     m_pi = mass_pi0_GeV
     m_muon = mass_muon_GeV
