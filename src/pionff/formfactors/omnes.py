@@ -36,12 +36,19 @@ def _t_pole(s, s_th):
     return (s - s_th) / (s + s_th)
 
 
-def omnes_below_threshold_scalar(s, s_th, phaseshift, *args):
+def omnes_below_threshold_scalar(s, s_th, s_max, phaseshift, *args):
     """
     args: positional arguments of phaseshift
     s_th = 4 m_pi^2
     """
-    res, _err = quad(_omnes_rep_integrand, s_th, np.inf, args=(s, phaseshift, *args))
+    res, _err = quad(
+        _omnes_rep_integrand,
+        s_th,
+        s_max,
+        args=(s, phaseshift, *args),
+        epsabs=1e-10,
+        epsrel=1e-10,
+    )
     res *= s / np.pi
     return np.exp(res)
 
@@ -49,35 +56,38 @@ def omnes_below_threshold_scalar(s, s_th, phaseshift, *args):
 omnes_below_threshold = np.vectorize(omnes_below_threshold_scalar)
 
 
-def omnes_above_threshold(s, s_th, phaseshift, *args):
+def omnes_above_threshold(s, s_th, s_max, phaseshift, *args):
     """
     args: positional arguments of phaseshift
     s_th = 4 m_pi^2
     principal value
     """
     t_pole = _t_pole(s, s_th)
+    t_max = 1 - 1e-06 if s_max == np.inf else _t_pole(s_max, s_th) - 1e-06
     res, _err = quad(
         lambda x: _omnes_rep_integrand_reduced_support(x, s, s_th, phaseshift, *args),
         weight="cauchy",
         wvar=t_pole,
         a=0,
-        b=1 - 1e-6,
+        b=t_max,
+        epsabs=1e-10,
+        epsrel=1e-10,
     )
 
     res *= s / np.pi
     return np.exp(res)
 
 
-def omnes_function_scalar(s, s_th, phaseshift, *args):
+def omnes_function_scalar(s, s_th, phaseshift, *args, s_max=np.inf):
     """
     splitting is needed to avoid passing negative values to np.sqrt
     Notice: even if this is a function of s, the function phaseshift is written
     as a function of sqrt(s). Inside 'omnes_rep_integrand' the square root is performed!
     """
     if s > s_th:
-        res = omnes_above_threshold(s, s_th, phaseshift, *args)
+        res = omnes_above_threshold(s, s_th, s_max, phaseshift, *args)
     elif s <= s_th:
-        res = omnes_below_threshold(s, s_th, phaseshift, *args)
+        res = omnes_below_threshold(s, s_th, s_max, phaseshift, *args)
     return res
 
 

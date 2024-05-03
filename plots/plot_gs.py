@@ -11,6 +11,7 @@ from pionff.formfactors.gounaris_sakurai import (
     h_prime,
     h_prime_ee,
 )
+from pionff.formfactors.omnes import omnes_function
 
 
 def plotGS():
@@ -128,5 +129,29 @@ def plotMsquare():
     plt.close()
 
 
+def plotOmnes():
+    s_range = np.linspace(-6 * mass_pi0_GeV**2, 1.1, 150)  # GeV
+    plt.plot(
+        s_range,
+        omnes_function(
+            s_range,
+            4 * mass_pi0_GeV * mass_pi0_GeV,
+            argFpi,
+            mass_pi0_GeV,
+            mass_rho0_GeV,
+            g_ppr_0,
+        )
+        ** 2,
+        label="GS",
+    )
+    plt.xlabel(r"$E \; [GeV] $")
+    plt.ylabel(r"$ |\Omega(E)|^2 $")
+    plt.grid()
+    plt.legend()
+    plt.show()
+    plt.close()
+
+
 if __name__ == "__main__":
     plotGS()
+    plotOmnes()

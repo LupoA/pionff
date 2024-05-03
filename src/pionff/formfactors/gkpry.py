@@ -368,3 +368,59 @@ def spectral_density_errors(e_values, m_pi, m_rho, par, n_copies=100, error="max
             raise ValueError("Allowed error types are 'max' and 'std'.")
 
     return np.array(results_std)
+
+
+def abs_fpi_s_sq_errors(s_values, m_pi, m_rho, par, n_copies=100, error="max"):
+    """
+    Returns the error on the spectral density.
+    """
+    results_std = []
+
+    # we allow the function to work on e_values being a float or a np.array
+    # by making it always a np.array
+    if not isinstance(s_values, np.ndarray):
+        s_values = np.array([s_values])
+
+    for s in s_values:
+        results = []
+
+        for _ in range(n_copies):
+            updated_par = par.copy()
+
+            # vary b0
+            b0 = par["b0"]
+            b0_err = par["b0_err"]
+            updated_par["b0"] = random.uniform(b0 - b0_err, b0 + b0_err)
+
+            # vary b1
+            b1 = par["b1"]
+            b1_err = par["b1_err"]
+            updated_par["b1"] = random.uniform(b1 - b1_err, b1 + b1_err)
+
+            # vary lambda_1
+            lambda_1 = par["lambda_1"]
+            lambda_1_err = par["lambda_1_err"]
+            updated_par["lambda_1"] = random.uniform(
+                lambda_1 - lambda_1_err, lambda_1 + lambda_1_err
+            )
+
+            # vary lambda_2
+            lambda_2 = par["lambda_2"]
+            lambda_2_err = par["lambda_2_err"]
+            updated_par["lambda_2"] = random.uniform(
+                lambda_2 - lambda_2_err, lambda_2 + lambda_2_err
+            )
+
+            # run
+            result = absFpi_of_s(s, m_pi, m_rho, updated_par) ** 2
+            results.append(result)
+
+        if error == "max":
+            _std = abs(np.amax(results) - np.amin(results))
+            results_std.append(_std)
+        elif error == "std":
+            results_std.append(np.std(results))
+        else:
+            raise ValueError("Allowed error types are 'max' and 'std'.")
+
+    return np.array(results_std)
