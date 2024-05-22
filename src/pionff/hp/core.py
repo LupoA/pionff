@@ -71,7 +71,7 @@ def matcal_T_pole(k3, n_mod, L, m_pi, phase_shift, *args):
     s = e**2
 
     def _absfpi(s):
-        return omnes_below_threshold(s, 2 * m_pi, phase_shift, *args)
+        return omnes_below_threshold(s, 2 * m_pi, np.inf, phase_shift, *args)
 
     return 2 * ((4 * msq) + k3sq) * _absfpi(-s) * _absfpi(-s) * zeta(k3, msq, n_mod, L)
 

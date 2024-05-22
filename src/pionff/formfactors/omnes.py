@@ -41,6 +41,7 @@ def omnes_below_threshold_scalar(s, s_th, s_max, phaseshift, *args):
     args: positional arguments of phaseshift
     s_th = 4 m_pi^2
     """
+
     res, _err = quad(
         _omnes_rep_integrand,
         s_th,
