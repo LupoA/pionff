@@ -3,6 +3,8 @@ import numpy as np
 from pionff.utils.kinematics import e_to_k_2particles
 from scipy.integrate import quad
 from pionff.utils.amu_kernels import kernelTMR
+from pionff.utils.windows import StandardWindows, sd_window, id_window
+from pionff.params import gev_fm_conversion
 
 
 def k_rho_function(m_pi, m_rho):
@@ -165,3 +167,114 @@ def gs_amu(mass_muon, m_pi, m_rho, g_ppr, x0min=0, x0max=np.inf):
         lambda x: integrand_for_amu(x, mass_muon, m_pi, m_rho, g_ppr), x0min, x0max
     )
     return amu
+
+
+def gs_amu_window(
+    window, mass_muon, m_pi, m_rho, g_ppr, x0_cut_dd, x0min=0, x0max=np.inf
+):
+    window_t = StandardWindows()
+    delta_gev = 0.15 * gev_fm_conversion
+    prec = 1e-10
+
+    def _integrand_for_amu(x0):
+        return (
+            gs_corr(x0, m_pi, m_rho, g_ppr)
+            * kernelTMR(x0, mass_muon=mass_muon)
+            * sd_window(x0, x0_cut_dd, delta_gev)
+        )
+
+    def _integrand_for_amu_SD(x0):
+        return (
+            gs_corr(x0, m_pi, m_rho, g_ppr)
+            * kernelTMR(x0, mass_muon=mass_muon)
+            * window_t.sd(x0, units_fm=False)
+        )
+
+    def _integrand_for_amu_ID(x0):
+        return (
+            gs_corr(x0, m_pi, m_rho, g_ppr)
+            * kernelTMR(x0, mass_muon=mass_muon)
+            * id_window(x0, 0.4 * gev_fm_conversion, 1 * gev_fm_conversion, delta_gev)
+        )
+
+    def _integrand_for_amu_LD(x0):
+        return (
+            gs_corr(x0, m_pi, m_rho, g_ppr)
+            * kernelTMR(x0, mass_muon=mass_muon)
+            * id_window(x0, 1 * gev_fm_conversion, x0_cut_dd, delta_gev)
+        )
+
+    def _integrand_for_amu_OL(x0):
+        return (
+            gs_corr(x0, m_pi, m_rho, g_ppr)
+            * kernelTMR(x0, mass_muon=mass_muon)
+            * window_t.ol(x0, units_fm=False)
+        )
+
+    def _integrand_for_amu_1519(x0):
+        return (
+            gs_corr(x0, m_pi, m_rho, g_ppr)
+            * kernelTMR(x0, mass_muon=mass_muon)
+            * id_window(x0, 1.5 * gev_fm_conversion, 1.9 * gev_fm_conversion, delta_gev)
+        )
+
+    if window == "00-28":
+        amu, _err = quad(
+            lambda x: _integrand_for_amu(x),
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
+        )
+        return amu
+
+    elif window == "00-04":
+        amu, _err = quad(
+            lambda x: _integrand_for_amu_SD(x),
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
+        )
+        return amu
+
+    elif window == "04-10":
+        amu, _err = quad(
+            lambda x: _integrand_for_amu_ID(x),
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
+        )
+        return amu
+    elif window == "10-28":
+        amu, _err = quad(
+            lambda x: _integrand_for_amu_LD(x),
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
+        )
+        return amu
+    elif window == "28-35":
+        amu, _err = quad(
+            lambda x: _integrand_for_amu_OL(x),
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
+        )
+        return amu
+    elif window == "15-19":
+        amu, _err = quad(
+            lambda x: _integrand_for_amu_1519(x),
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
+        )
+        return amu
+    else:
+        raise ValueError(
+            "window can be: full, short_distance, intermediate_distance, long_distance, 2.8-to-3.5."
+        )

@@ -2,7 +2,7 @@ import numpy as np
 from scipy.integrate import quad
 from pionff.hp.core import matcal_T_pole, momenta_with_fixed_norm
 from pionff.utils.amu_kernels import kernelTMR
-from pionff.utils.windows import StandardWindows, sd_window
+from pionff.utils.windows import StandardWindows, sd_window, id_window
 from pionff.params import gev_fm_conversion
 
 
@@ -49,16 +49,19 @@ def correction_amu(x0cut, L, m_muon, m_pi, phase_shift, *args):
     """
     First three Poisson modes
     """
-    res = correction_amu_single_poisson_mode(
+    res_1 = correction_amu_single_poisson_mode(
         x0cut, 1, L, m_muon, m_pi, phase_shift, *args
     )
-    res += correction_amu_single_poisson_mode(
+    print("Poisson mode 1 : ", res_1 * 1e10)
+    res_2 = correction_amu_single_poisson_mode(
         x0cut, np.sqrt(2), L, m_muon, m_pi, phase_shift, *args
     )
+    print("Poisson mode 2 : ", res_2 * 1e10)
     err = correction_amu_single_poisson_mode(
         x0cut, np.sqrt(3), L, m_muon, m_pi, phase_shift, *args
     )
-    return res + err, err
+    print("Poisson mode 3 : ", err * 1e10)
+    return res_1 + res_2 + err, err
 
 
 def correction_amu_single_poisson_mode_window(
@@ -84,7 +87,6 @@ def correction_amu_single_poisson_mode_window(
             kernelTMR(x0, m_muon)
             * correction_n_Ct(x0, n_mod, L, m_pi, phase_shift, *args)
             * window_t.sd(x0, units_fm=False)
-            * sd_window(x0, x0_cut_dd, delta_gev)
         )
 
     def _integrand_ID(x0):
@@ -92,15 +94,13 @@ def correction_amu_single_poisson_mode_window(
             kernelTMR(x0, m_muon)
             * correction_n_Ct(x0, n_mod, L, m_pi, phase_shift, *args)
             * window_t.id(x0, units_fm=False)
-            * sd_window(x0, x0_cut_dd, delta_gev)
         )
 
     def _integrand_LD(x0):
         return (
             kernelTMR(x0, m_muon)
             * correction_n_Ct(x0, n_mod, L, m_pi, phase_shift, *args)
-            * window_t.ld(x0, units_fm=False)
-            * sd_window(x0, x0_cut_dd, delta_gev)
+            * id_window(x0, 1 * gev_fm_conversion, x0_cut_dd, delta_gev)
         )
 
     def _integrand_OL(x0):
@@ -110,7 +110,14 @@ def correction_amu_single_poisson_mode_window(
             * window_t.ol(x0, units_fm=False)
         )
 
-    if window == "full":
+    def _integrand_1519(x0):
+        return (
+            kernelTMR(x0, m_muon)
+            * correction_n_Ct(x0, n_mod, L, m_pi, phase_shift, *args)
+            * id_window(x0, 1.5 * gev_fm_conversion, 1.9 * gev_fm_conversion, delta_gev)
+        )
+
+    if window == "00-28":
         value, _err = quad(
             lambda x: _integrand_full(x),
             a=1e-10,
@@ -120,7 +127,7 @@ def correction_amu_single_poisson_mode_window(
         )
         return value * momenta_with_fixed_norm(n_norm=n_mod)
 
-    elif window == "short_distance":
+    elif window == "00-04":
         value, _err = quad(
             lambda x: _integrand_SD(x),
             a=1e-10,
@@ -130,7 +137,7 @@ def correction_amu_single_poisson_mode_window(
         )
         return value * momenta_with_fixed_norm(n_norm=n_mod)
 
-    elif window == "intermediate_distance":
+    elif window == "04-10":
         value, _err = quad(
             lambda x: _integrand_ID(x),
             a=1e-10,
@@ -140,7 +147,7 @@ def correction_amu_single_poisson_mode_window(
         )
         return value * momenta_with_fixed_norm(n_norm=n_mod)
 
-    elif window == "long_distance":
+    elif window == "10-28":
         value, _err = quad(
             lambda x: _integrand_LD(x),
             a=1e-10,
@@ -150,7 +157,7 @@ def correction_amu_single_poisson_mode_window(
         )
         return value * momenta_with_fixed_norm(n_norm=n_mod)
 
-    elif window == "2.8-to-3.5":
+    elif window == "28-35":
         value, _err = quad(
             lambda x: _integrand_OL(x),
             a=1e-10,
@@ -160,9 +167,19 @@ def correction_amu_single_poisson_mode_window(
         )
         return value * momenta_with_fixed_norm(n_norm=n_mod)
 
+    elif window == "15-19":
+        value, _err = quad(
+            lambda x: _integrand_1519(x),
+            a=1e-10,
+            b=x0_cut_mll_hp,
+            epsabs=1e-10,
+            epsrel=1e-10,
+        )
+        return value * momenta_with_fixed_norm(n_norm=n_mod)
+
     else:
         raise ValueError(
-            "Accepted values for 'window' are 'short_distance', 'intermediate_distance', 'long_distance', '2.8-to-3.5'."
+            "Accepted values for 'window' are '00-04', '04-10', '10-28', '28-35', '15-19'."
         )
 
 

@@ -1,7 +1,12 @@
 import numpy as np
 from scipy.integrate import quad
-from pionff.utils.kinematics import k_to_E_2particles
 from pionff.formfactors.omnes import omnes_below_threshold
+
+
+def _monopoleF(ksq, m_pi):
+    monopole_M_sq_gev = 0.517 + (0.647 * m_pi * m_pi)
+    res = 1 + (ksq / monopole_M_sq_gev)
+    return 1 / res
 
 
 def _z_factor(p3, m_pi_sq, k3sq, sign: int):
@@ -65,15 +70,20 @@ def matcal_T_pole(k3, n_mod, L, m_pi, phase_shift, *args):
     """
     Eq. 2.24 of [https://arxiv.org/pdf/2004.03935.pdf]
     """
-    e = k_to_E_2particles(m_pi, k3)
     k3sq = k3**2
     msq = m_pi**2
-    s = e**2
 
-    def _absfpi(s):
-        return omnes_below_threshold(s, 2 * m_pi, np.inf, phase_shift, *args)
+    def _absfpi(_k3sq):
+        # return _monopoleF(k3*k3, m_pi)
+        return omnes_below_threshold(_k3sq, 2 * m_pi, np.inf, phase_shift, *args)
 
-    return 2 * ((4 * msq) + k3sq) * _absfpi(-s) * _absfpi(-s) * zeta(k3, msq, n_mod, L)
+    return (
+        2
+        * ((4 * msq) + k3sq)
+        * _absfpi(-k3sq)
+        * _absfpi(-k3sq)
+        * zeta(k3, msq, n_mod, L)
+    )
 
 
 def momenta_with_fixed_norm(n_norm):

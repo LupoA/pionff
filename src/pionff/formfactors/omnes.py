@@ -64,7 +64,7 @@ def omnes_above_threshold(s, s_th, s_max, phaseshift, *args):
     principal value
     """
     t_pole = _t_pole(s, s_th)
-    t_max = 1 - 1e-06 if s_max == np.inf else _t_pole(s_max, s_th) - 1e-06
+    t_max = 1 - 1e-07 if s_max == np.inf else _t_pole(s_max, s_th) - 1e-07
     res, _err = quad(
         lambda x: _omnes_rep_integrand_reduced_support(x, s, s_th, phaseshift, *args),
         weight="cauchy",

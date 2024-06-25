@@ -4,7 +4,7 @@ from pionff.utils.amu_kernels import kernelTMR
 from scipy.integrate import quad
 import logging
 import numpy as np
-from pionff.utils.windows import StandardWindows, sd_window
+from pionff.utils.windows import StandardWindows, sd_window, id_window
 from pionff.params import gev_fm_conversion
 
 
@@ -84,19 +84,25 @@ def mll_amu(mass_muon, e_n, asq_n, x0min=0, x0max=np.inf):
 
 def mll_amu_window(mass_muon, e_n, asq_n, window: str, x0min, x_cut_dd):
     """
-    return a_mu = int_{x0 min}^{x0 max} K(x0) C(x0)
+    return a_mu = int_{x0 min}^{x0 max} K(x0) C(x0) W(x0)
     """
     window_t = StandardWindows()
     delta_gev = 0.15 * gev_fm_conversion
+    prec = 1e-10
 
     def _integrand_central(x0, asq_n, e_n, mass_muon):
         """
         K(x_0) C(x_0) and K(x_0) delta_C(x_0)
         """
         corr_value, err = mll_corr(x0, e_n, asq_n)
-        return corr_value * kernelTMR(x0, mass_muon=mass_muon) * sd_window(
-            x0, x_cut_dd, delta_gev
-        ), err * kernelTMR(x0, mass_muon=mass_muon) * sd_window(x0, x_cut_dd, delta_gev)
+        return (
+            corr_value
+            * kernelTMR(x0, mass_muon=mass_muon)
+            * sd_window(x0, x_cut_dd, delta_gev),
+            err
+            * kernelTMR(x0, mass_muon=mass_muon)
+            * sd_window(x0, x_cut_dd, delta_gev),
+        )
 
     def _integrand_SD(x0, asq_n, e_n, mass_muon):
         """
@@ -105,31 +111,47 @@ def mll_amu_window(mass_muon, e_n, asq_n, window: str, x0min, x_cut_dd):
         corr_value, err = mll_corr(x0, e_n, asq_n)
         return corr_value * kernelTMR(x0, mass_muon=mass_muon) * window_t.sd(
             x0, units_fm=False
-        ) * sd_window(x0, x_cut_dd, delta_gev), err * kernelTMR(
-            x0, mass_muon=mass_muon
-        ) * window_t.sd(x0, units_fm=False) * sd_window(x0, x_cut_dd, delta_gev)
+        ), err * kernelTMR(x0, mass_muon=mass_muon) * window_t.sd(x0, units_fm=False)
 
     def _integrand_ID(x0, asq_n, e_n, mass_muon):
         """
         K(x_0) C(x_0) W_id(x_0) and K(x_0) delta_C(x_0) W_id(x_0)
         """
         corr_value, err = mll_corr(x0, e_n, asq_n)
-        return corr_value * kernelTMR(x0, mass_muon=mass_muon) * window_t.id(
-            x0, units_fm=False
-        ) * sd_window(x0, x_cut_dd, delta_gev), err * kernelTMR(
-            x0, mass_muon=mass_muon
-        ) * window_t.id(x0, units_fm=False) * sd_window(x0, x_cut_dd, delta_gev)
+        return (
+            corr_value
+            * kernelTMR(x0, mass_muon=mass_muon)
+            * id_window(
+                x0, 0.4 * gev_fm_conversion, 1.0 * gev_fm_conversion, delta_gev
+            ),
+            err
+            * kernelTMR(x0, mass_muon=mass_muon)
+            * id_window(
+                x0, 0.4 * gev_fm_conversion, 1.0 * gev_fm_conversion, delta_gev
+            ),
+        )
+
+    def _integrand_1519(x0, asq_n, e_n, mass_muon):
+        """
+        K(x_0) C(x_0) W_id(x_0) and K(x_0) delta_C(x_0) W_id(x_0)
+        """
+        corr_value, err = mll_corr(x0, e_n, asq_n)
+        return corr_value * kernelTMR(x0, mass_muon=mass_muon) * id_window(
+            x0, 1.5 * gev_fm_conversion, 1.9 * gev_fm_conversion, delta_gev
+        ), err * kernelTMR(x0, mass_muon=mass_muon) * id_window(
+            x0, 1.5 * gev_fm_conversion, 1.9 * gev_fm_conversion, delta_gev
+        )
 
     def _integrand_LD(x0, asq_n, e_n, mass_muon):
         """
         K(x_0) C(x_0) W_ld(x_0) and K(x_0) delta_C(x_0) W_ld(x_0)
         """
         corr_value, err = mll_corr(x0, e_n, asq_n)
-        return corr_value * kernelTMR(x0, mass_muon=mass_muon) * window_t.ld(
-            x0, units_fm=False
-        ) * sd_window(x0, x_cut_dd, delta_gev), err * kernelTMR(
-            x0, mass_muon=mass_muon
-        ) * window_t.ld(x0, units_fm=False) * sd_window(x0, x_cut_dd, delta_gev)
+        return corr_value * kernelTMR(x0, mass_muon=mass_muon) * id_window(
+            x0, 1 * gev_fm_conversion, x_cut_dd, delta_gev
+        ), err * kernelTMR(x0, mass_muon=mass_muon) * id_window(
+            x0, 1 * gev_fm_conversion, x_cut_dd, delta_gev
+        )
 
     def _integrand_OL(x0, asq_n, e_n, mass_muon):
         """
@@ -140,52 +162,109 @@ def mll_amu_window(mass_muon, e_n, asq_n, window: str, x0min, x_cut_dd):
             x0, units_fm=False
         ), err * kernelTMR(x0, mass_muon=mass_muon) * window_t.ol(x0, units_fm=False)
 
-    if window == "full":
+    if window == "00-28":
         amu, _ = quad(
-            lambda x: _integrand_central(x, asq_n, e_n, mass_muon)[0], x0min, np.inf
+            lambda x: _integrand_central(x, asq_n, e_n, mass_muon)[0],
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
         )
         amuERR, _ = quad(
-            lambda x: _integrand_central(x, asq_n, e_n, mass_muon)[1], x0min, np.inf
+            lambda x: _integrand_central(x, asq_n, e_n, mass_muon)[1],
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
         )
         return amu, amuERR
 
-    elif window == "short_distance":
+    elif window == "00-04":
         amu, _ = quad(
-            lambda x: _integrand_SD(x, asq_n, e_n, mass_muon)[0], x0min, np.inf
+            lambda x: _integrand_SD(x, asq_n, e_n, mass_muon)[0],
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
         )
         amuERR, _ = quad(
-            lambda x: _integrand_SD(x, asq_n, e_n, mass_muon)[1], x0min, np.inf
+            lambda x: _integrand_SD(x, asq_n, e_n, mass_muon)[1],
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
         )
         return amu, amuERR
 
-    elif window == "intermediate_distance":
+    elif window == "04-10":
         amu, _ = quad(
-            lambda x: _integrand_ID(x, asq_n, e_n, mass_muon)[0], x0min, np.inf
+            lambda x: _integrand_ID(x, asq_n, e_n, mass_muon)[0],
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
         )
         amuERR, _ = quad(
-            lambda x: _integrand_ID(x, asq_n, e_n, mass_muon)[1], x0min, np.inf
+            lambda x: _integrand_ID(x, asq_n, e_n, mass_muon)[1],
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
         )
         return amu, amuERR
 
-    elif window == "long_distance":
+    elif window == "10-28":
         amu, _ = quad(
-            lambda x: _integrand_LD(x, asq_n, e_n, mass_muon)[0], x0min, np.inf
+            lambda x: _integrand_LD(x, asq_n, e_n, mass_muon)[0],
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
         )
         amuERR, _ = quad(
-            lambda x: _integrand_LD(x, asq_n, e_n, mass_muon)[1], x0min, np.inf
+            lambda x: _integrand_LD(x, asq_n, e_n, mass_muon)[1],
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
         )
         return amu, amuERR
 
-    elif window == "2.8-to-3.5":
+    elif window == "28-35":
         amu, _ = quad(
-            lambda x: _integrand_OL(x, asq_n, e_n, mass_muon)[0], x0min, np.inf
+            lambda x: _integrand_OL(x, asq_n, e_n, mass_muon)[0],
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
         )
         amuERR, _ = quad(
-            lambda x: _integrand_OL(x, asq_n, e_n, mass_muon)[1], x0min, np.inf
+            lambda x: _integrand_OL(x, asq_n, e_n, mass_muon)[1],
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
+        )
+        return amu, amuERR
+
+    elif window == "15-19":
+        amu, _ = quad(
+            lambda x: _integrand_1519(x, asq_n, e_n, mass_muon)[0],
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
+        )
+        amuERR, _ = quad(
+            lambda x: _integrand_1519(x, asq_n, e_n, mass_muon)[1],
+            x0min,
+            np.inf,
+            epsabs=prec,
+            epsrel=prec,
         )
         return amu, amuERR
 
     else:
         raise ValueError(
-            "Accepted values for 'window' are 'short_distance', 'intermediate_distance', 'long_distance', '2.8-to-3.5'."
+            "Accepted values for 'window' are '00-04', '04-10', '10-28', '28-35', '15-19'."
         )
