@@ -22,10 +22,15 @@ class StandardWindows:
     def __init__(self):
         self.t0_fm = 0.4
         self.t1_fm = 1.0
+        self.t_far_fm = 3.5
         self.Delta_fm = 0.15
         self.t0_gev = 0.4 * gev_fm_conversion
         self.t1_gev = 1.0 * gev_fm_conversion
+        self.t_far_gev = 3.5 * gev_fm_conversion
         self.Delta_gev = 0.15 * gev_fm_conversion
+
+        self.t_dd_fm = 2.8
+        self.t_dd_gev = 2.8 * gev_fm_conversion
 
     def sd(self, t, units_fm: bool):
         if not units_fm:
@@ -44,3 +49,9 @@ class StandardWindows:
             return ld_window(t, self.t1_gev, self.Delta_gev)
         else:
             return ld_window(t, self.t1_fm, self.Delta_fm)
+
+    def ol(self, t, units_fm: bool):
+        if not units_fm:
+            return id_window(t, self.t_dd_gev, self.t_far_gev, self.Delta_gev)
+        else:
+            return id_window(t, self.t_dd_fm, self.t_far_fm, self.Delta_fm)
